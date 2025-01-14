@@ -1,0 +1,73 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Asta in tempo reale{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {{ encore_entry_script_tags('app') }}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pusher = new Pusher('{{ pusher_key }}', {
+                cluster: '{{ pusher_cluster }}',
+                encrypted: true
+            });
+
+            const channel = pusher.subscribe('auction-channel');
+            
+            channel.bind('new-bid', function(data) {
+                const bidsList = document.getElementById('bids');
+                const newBid = document.createElement('li');
+                newBid.textContent = `${data.username} ha offerto €${data.amount.toFixed(2)}`;
+                bidsList.appendChild(newBid);
+            });
+        });
+
+        function sendBid() {
+            const username = document.getElementById('username').value;
+            const amount = document.getElementById('amount').value;
+
+            fetch('/auction/bid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, amount }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Errore nella richiesta:', error);
+                alert('Si è verificato un errore durante l\'invio dell\'offerta');
+            });
+            
+            return false;
+        }
+    </script>
+{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <h1>Asta in tempo reale</h1>
+
+        <ul id="bids">
+            <!-- Le offerte degli utenti appariranno qui in tempo reale -->
+        </ul>
+
+        <form onsubmit="return sendBid();">
+            <div class="form-group">
+                <input type="text" id="username" class="form-control" placeholder="Il tuo nome" required>
+            </div>
+            <div class="form-group">
+                <input type="number" id="amount" class="form-control" placeholder="Importo offerta asta (€)" step="0.01" min="0" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Invia Offerta</button>
+        </form>
+    </div>
+{% endblock %}
